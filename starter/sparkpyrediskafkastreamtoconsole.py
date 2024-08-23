@@ -133,5 +133,5 @@ emailAndBirthYearStreamingDF.writeStream\
     .awaitTermination()
 
 # Run the python script by running the command from the terminal:
-# /home/workspace/submit-redis-kafka-streaming.sh
+# ./submit-redis-kafka-streaming.sh
 # Verify the data looks correct

@@ -111,9 +111,9 @@ The application development team was not able to complete the feature as the gra
 - Save the Spark startup logs for submission with your solution using the commands below:
 
 ```
-docker logs nd029-c2-apache-spark-and-spark-streaming_spark_1 >& ../../spark/logs/spark-master.log
+docker logs evaluate-human-balance-spark-1 >& ../spark/logs/spark-master.log
 
-docker logs nd029-c2-apache-spark-and-spark-streaming_spark_1 >& ../../spark/logs/spark-master.log >& ../../spark/logs/spark-worker.log
+docker logs evaluate-human-balance-spark-1 >& ../spark/logs/spark-master.log >& ../spark/logs/spark-worker.log
 ```
 
 - Create a new Kafka topic to transmit the complete risk score with birth date, so the data can be viewed in the STEDI application graph
@@ -146,7 +146,7 @@ docker-compose up
 - To monitor the progress of data generated, from a terminal type:
 
 ```
-docker logs -f nd029-c2-apache-spark-and-spark-streaming_stedi_1
+docker logs -f evaluate-human-balance-stedi-1
 ```
 
 - You are going to to write 3 Spark Python scripts. Each will connect to a kafka broker running at `kafka:19092` :
