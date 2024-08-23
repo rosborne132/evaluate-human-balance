@@ -1,0 +1,2 @@
+#!/bin/bash
+docker exec -it evaluate-human-balance-spark-1 /opt/bitnami/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0 /home/workspace/starter/sparkpyrediskafkastreamtoconsole.py | tee ../spark/logs/redis-kafka.log
