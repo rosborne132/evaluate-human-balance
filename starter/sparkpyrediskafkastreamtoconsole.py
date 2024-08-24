@@ -1,14 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, to_json, col, unbase64, base64, split, expr
-from pyspark.sql.types import (
-    StructField,
-    StructType,
-    StringType,
-    BooleanType,
-    ArrayType,
-    DateType,
-    FloatType,
-)
+from pyspark.sql.functions import from_json, to_json, col, unbase64, split
 from helpers import createTopic
 from schemas import redisSchema, customerRecordsSchema
 
@@ -58,8 +49,10 @@ redisStreamingDF.withColumn("value", from_json("value", redisSchema)).select(
     col("value.*")
 ).createOrReplaceTempView("RedisSortedSet")
 
-# Execute a sql statement against a temporary view, which statement takes the element field from the 0th element in the array of structs and create a column called encodedCustomer
-# the reason we do it this way is that the syntax available select against a view is different than a dataframe, and it makes it easy to select the nth element of an array in a sql column
+# Execute a sql statement against a temporary view, which statement takes the element field from the 0th element in the array of structs and
+# create a column called encodedCustomer
+# the reason we do it this way is that the syntax available select against a view is different than a dataframe, and it makes it easy to
+# select the nth element of an array in a sql column
 zSetEntriesEncodedStreamingDF = spark.sql(
     "SELECT key, zSetEntries[0].element AS encodedCustomer FROM RedisSortedSet"
 )
@@ -88,7 +81,8 @@ zSetDecodedEntriesStreamingDF.withColumn(
     "customer", from_json("customer", customerRecordsSchema)
 ).select(col("customer.*")).createOrReplaceTempView("CustomerRecords")
 
-# JSON parsing will set non-existent fields to null, so let's select just the fields we want, where they are not null as a new dataframe called emailAndBirthDayStreamingDF
+# JSON parsing will set non-existent fields to null, so let's select just the fields we want, where they are not null as a new dataframe
+# called emailAndBirthDayStreamingDF
 emailAndBirthDayStreamingDF = spark.sql(
     "SELECT * FROM CustomerRecords WHERE email IS NOT NULL AND birthDay IS NOT NULL"
 )

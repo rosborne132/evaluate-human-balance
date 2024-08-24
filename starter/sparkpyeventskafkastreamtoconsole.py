@@ -1,14 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, unbase64, base64, split
-from pyspark.sql.types import (
-    StructField,
-    StructType,
-    StringType,
-    BooleanType,
-    ArrayType,
-    DateType,
-    FloatType,
-)
+from pyspark.sql.functions import from_json, col
 from helpers import createTopic
 from schemas import stediAppSchema
 
@@ -40,7 +31,8 @@ stediAppStreamingDF.withColumn("value", from_json("value", stediAppSchema)).sele
     col("value.*")
 ).createOrReplaceTempView("CustomerRisk")
 
-# Execute a sql statement against a temporary view, selecting the customer and the score from the temporary view, creating a dataframe called customerRiskStreamingDF
+# Execute a sql statement against a temporary view, selecting the customer and the score from the temporary view, creating a dataframe
+# called customerRiskStreamingDF
 customerRiskStreamingDF = spark.sql("SELECT customer, score FROM CustomerRisk")
 
 # Sink the customerRiskStreamingDF dataframe to the console in append mode
