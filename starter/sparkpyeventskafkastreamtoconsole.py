@@ -1,28 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, unbase64, base64, split
 from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType, FloatType
-
-# Using the spark application object, read a streaming dataframe from the Kafka topic stedi-events as the source
-# Be sure to specify the option that reads all the events from the topic including those that were published before you started the spark stream
-stediAppSchema = StructType(
-    [
-        StructField("customer", StringType()),
-        StructField("score", FloatType()),
-        StructField("riskDate", StringType()),
-    ]
-)
+from helpers import createTopic
+from schemas import stediAppSchema
 
 spark = SparkSession.builder.appName("stedi-events").getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
-
-stediAppRawStreamingDF = spark.readStream.format("kafka")\
-    .option("kafka.bootstrap.servers", "kafka:19092")\
-    .option("subscribe", "stedi-events")\
-    .option("startingOffsets", "earliest")\
-    .load()
+stediAppRawStreamingDF = createTopic(spark, "stedi-events")
 
 # Cast the value column in the streaming dataframe as a STRING
-stediAppStreamingDF = stediAppRawStreamingDF.selectExpr("cast(key as string) key", "cast(value as string) value")
+stediAppStreamingDF = stediAppRawStreamingDF.selectExpr("CAST(key AS string) AS key", "CAST(value AS string) AS value")
 
 # Parse the JSON from the single column "value" with a json object in it, like this:
 # +------------+
@@ -46,7 +33,7 @@ stediAppStreamingDF.withColumn("value", from_json("value", stediAppSchema))\
 # Execute a sql statement against a temporary view, selecting the customer and the score from the temporary view, creating a dataframe called customerRiskStreamingDF
 customerRiskStreamingDF = spark.sql("SELECT customer, score FROM CustomerRisk")
 
-# TO-DO: sink the customerRiskStreamingDF dataframe to the console in append mode
+# Sink the customerRiskStreamingDF dataframe to the console in append mode
 #
 # It should output like this:
 #

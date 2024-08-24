@@ -1,29 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, to_json, col, unbase64, base64, split, expr
 from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType, FloatType
-
-# Create schemas
-redisSchema = StructType(
-    [
-        StructField("key", StringType()),
-        StructField("zSetEntries", ArrayType(
-            StructType(
-                [
-                    StructField("element", StringType()),
-                    StructField("score", FloatType())
-                ]
-            )
-        )),
-    ]
-)
-customerRecordsSchema = StructType(
-    [
-        StructField("customerName", StringType()),
-        StructField("email", StringType()),
-        StructField("phone", StringType()),
-        StructField("birthDay", StringType())
-    ]
-)
+from helpers import createTopic
+from schemas import redisSchema, customerRecordsSchema
 
 # Create a spark application object
 spark = SparkSession.builder.appName("customer-redis").getOrCreate()
@@ -31,14 +10,10 @@ spark.sparkContext.setLogLevel('WARN')
 
 # Using the spark application object, read a streaming dataframe from the Kafka topic redis-server as the source
 # Be sure to specify the option that reads all the events from the topic including those that were published before you started the spark stream
-redisRawStreamingDF = spark.readStream.format("kafka")\
-    .option("kafka.bootstrap.servers", "kafka:19092")\
-    .option("subscribe", "redis-server")\
-    .option("startingOffsets", "earliest")\
-    .load()
+redisRawStreamingDF = createTopic(spark, "redis-server")
 
 # Cast the value column in the streaming dataframe as a STRING
-redisStreamingDF = redisRawStreamingDF.selectExpr("cast(value as string) value")
+redisStreamingDF = redisRawStreamingDF.selectExpr("cast(value AS string) AS value")
 
 # Parse the single column "value" with a json object in it, like this:
 # +------------+
@@ -77,7 +52,7 @@ redisStreamingDF.withColumn("value", from_json("value", redisSchema))\
 
 # Execute a sql statement against a temporary view, which statement takes the element field from the 0th element in the array of structs and create a column called encodedCustomer
 # the reason we do it this way is that the syntax available select against a view is different than a dataframe, and it makes it easy to select the nth element of an array in a sql column
-zSetEntriesEncodedStreamingDF = spark.sql("select key, zSetEntries[0].element as encodedCustomer from RedisSortedSet")
+zSetEntriesEncodedStreamingDF = spark.sql("SELECT key, zSetEntries[0].element AS encodedCustomer FROM RedisSortedSet")
 
 # Take the encodedCustomer column which is base64 encoded at first like this:
 # +--------------------+

@@ -129,9 +129,3 @@ services:
     volumes:
       - ./:/home/workspace/
       - ./spark/jars:/opt/bitnami/spark/.ivy2
-
-
-
-
-
-

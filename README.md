@@ -169,4 +169,3 @@ docker logs -f evaluate-human-balance-stedi-1
 ![Populated Graph](images/populated_graph.png)
 
 - Upload at least two screenshots of the working graph to the screenshots workspace folder
-
