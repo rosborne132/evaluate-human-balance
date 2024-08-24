@@ -18,8 +18,10 @@ def createTopic(spark, topicName):
     >>> spark = SparkSession.builder.appName("KafkaStreamingApp").getOrCreate()
     >>> kafkaDF = createTopic(spark, "myTopic")
     """
-    return spark.readStream.format("kafka")\
-        .option("kafka.bootstrap.servers", "kafka:19092")\
-        .option("subscribe", topicName)\
-        .option("startingOffsets", "earliest")\
+    return (
+        spark.readStream.format("kafka")
+        .option("kafka.bootstrap.servers", "kafka:19092")
+        .option("subscribe", topicName)
+        .option("startingOffsets", "earliest")
         .load()
+    )

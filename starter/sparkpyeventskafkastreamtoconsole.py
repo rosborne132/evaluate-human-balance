@@ -1,6 +1,14 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, unbase64, base64, split
-from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType, FloatType
+from pyspark.sql.types import (
+    StructField,
+    StructType,
+    StringType,
+    BooleanType,
+    ArrayType,
+    DateType,
+    FloatType,
+)
 from helpers import createTopic
 from schemas import stediAppSchema
 
@@ -9,7 +17,9 @@ spark.sparkContext.setLogLevel("WARN")
 stediAppRawStreamingDF = createTopic(spark, "stedi-events")
 
 # Cast the value column in the streaming dataframe as a STRING
-stediAppStreamingDF = stediAppRawStreamingDF.selectExpr("CAST(key AS string) AS key", "CAST(value AS string) AS value")
+stediAppStreamingDF = stediAppRawStreamingDF.selectExpr(
+    "CAST(key AS string) AS key", "CAST(value AS string) AS value"
+)
 
 # Parse the JSON from the single column "value" with a json object in it, like this:
 # +------------+
@@ -26,9 +36,9 @@ stediAppStreamingDF = stediAppRawStreamingDF.selectExpr("CAST(key AS string) AS 
 # +------------+-----+-----------+
 #
 # storing them in a temporary view called CustomerRisk
-stediAppStreamingDF.withColumn("value", from_json("value", stediAppSchema))\
-    .select(col("value.*"))\
-    .createOrReplaceTempView("CustomerRisk")
+stediAppStreamingDF.withColumn("value", from_json("value", stediAppSchema)).select(
+    col("value.*")
+).createOrReplaceTempView("CustomerRisk")
 
 # Execute a sql statement against a temporary view, selecting the customer and the score from the temporary view, creating a dataframe called customerRiskStreamingDF
 customerRiskStreamingDF = spark.sql("SELECT customer, score FROM CustomerRisk")
@@ -42,10 +52,9 @@ customerRiskStreamingDF = spark.sql("SELECT customer, score FROM CustomerRisk")
 # +--------------------+-----+
 # |Spencer.Davis@tes...| 8.0|
 # +--------------------+-----
-customerRiskStreamingDF.writeStream.outputMode("append")\
-    .format("console")\
-    .start()\
-    .awaitTermination()
+customerRiskStreamingDF.writeStream.outputMode("append").format(
+    "console"
+).start().awaitTermination()
 
 # Run the python script by running the command from the terminal:
 # ./submit-event-kafkastreaming.sh

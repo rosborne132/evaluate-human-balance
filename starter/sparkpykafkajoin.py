@@ -1,6 +1,14 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, to_json, col, unbase64, base64, split, expr
-from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType, FloatType
+from pyspark.sql.types import (
+    StructField,
+    StructType,
+    StringType,
+    BooleanType,
+    ArrayType,
+    DateType,
+    FloatType,
+)
 from helpers import createTopic
 from schemas import stediAppSchema, redisSchema, customerRecordsSchema
 
@@ -46,13 +54,15 @@ redisStreamingDF = redisRawStreamingDF.selectExpr("CAST(value AS string) AS valu
 # +------------+-----+-----------+------------+---------+-----+-----+-----------------+
 #
 # storing them in a temporary view called RedisSortedSet
-redisStreamingDF.withColumn("value", from_json("value", redisSchema))\
-    .select(col("value.*"))\
-    .createOrReplaceTempView("RedisSortedSet")
+redisStreamingDF.withColumn("value", from_json("value", redisSchema)).select(
+    col("value.*")
+).createOrReplaceTempView("RedisSortedSet")
 
 # Execute a sql statement against a temporary view, which statement takes the element field from the 0th element in the array of structs and create a column called encodedCustomer
 # the reason we do it this way is that the syntax available select against a view is different than a dataframe, and it makes it easy to select the nth element of an array in a sql column
-zSetEntriesEncodedStreamingDF = spark.sql("SELECT key, zSetEntries[0].element AS encodedCustomer FROM RedisSortedSet")
+zSetEntriesEncodedStreamingDF = spark.sql(
+    "SELECT key, zSetEntries[0].element AS encodedCustomer FROM RedisSortedSet"
+)
 
 # TO-DO: take the encodedCustomer column which is base64 encoded at first like this:
 # +--------------------+
@@ -66,27 +76,29 @@ zSetEntriesEncodedStreamingDF = spark.sql("SELECT key, zSetEntries[0].element AS
 # |            customer|
 # +--------------------+
 # |{"customerName":"...|
-#+--------------------+
+# +--------------------+
 #
 # with this JSON format: {"customerName":"Sam Test","email":"sam.test@test.com","phone":"8015551212","birthDay":"2001-01-03"}
-zSetDecodedEntriesStreamingDF = zSetEntriesEncodedStreamingDF\
-    .withColumn("customer", unbase64(zSetEntriesEncodedStreamingDF.encodedCustomer).cast("string"))
+zSetDecodedEntriesStreamingDF = zSetEntriesEncodedStreamingDF.withColumn(
+    "customer", unbase64(zSetEntriesEncodedStreamingDF.encodedCustomer).cast("string")
+)
 
 # Parse the JSON in the Customer record and store in a temporary view called CustomerRecords
-zSetDecodedEntriesStreamingDF\
-    .withColumn("customer", from_json("customer", customerRecordsSchema))\
-    .select(col("customer.*"))\
-    .createOrReplaceTempView("CustomerRecords")
+zSetDecodedEntriesStreamingDF.withColumn(
+    "customer", from_json("customer", customerRecordsSchema)
+).select(col("customer.*")).createOrReplaceTempView("CustomerRecords")
 
 # JSON parsing will set non-existent fields to null, so let's select just the fields we want, where they are not null as a new dataframe called emailAndBirthDayStreamingDF
-emailAndBirthDayStreamingDF = spark.sql("SELECT * FROM CustomerRecords WHERE email IS NOT NULL AND birthDay IS NOT NULL")
+emailAndBirthDayStreamingDF = spark.sql(
+    "SELECT * FROM CustomerRecords WHERE email IS NOT NULL AND birthDay IS NOT NULL"
+)
 
 # Split the birth year as a separate field from the birthday
 # Select only the birth year and email fields as a new streaming data frame called emailAndBirthYearStreamingDF
-emailAndBirthYearStreamingDF = emailAndBirthDayStreamingDF\
-    .withColumn("birthYear", split(emailAndBirthDayStreamingDF.birthDay, "-")\
-    .getItem(0)\
-    .alias("birthYear"))
+emailAndBirthYearStreamingDF = emailAndBirthDayStreamingDF.withColumn(
+    "birthYear",
+    split(emailAndBirthDayStreamingDF.birthDay, "-").getItem(0).alias("birthYear"),
+)
 
 
 # Using the spark application object, read a streaming dataframe from the Kafka topic stedi-events as the source
@@ -111,17 +123,17 @@ stediAppStreamingDF = stediAppRawStreamingDF.selectExpr("CAST(value AS string) v
 # +------------+-----+-----------+
 #
 # storing them in a temporary view called CustomerRisk
-stediAppStreamingDF\
-    .withColumn("value", from_json("value", stediAppSchema))\
-    .select(col("value.*"))\
-    .createOrReplaceTempView("CustomerRisk")
+stediAppStreamingDF.withColumn("value", from_json("value", stediAppSchema)).select(
+    col("value.*")
+).createOrReplaceTempView("CustomerRisk")
 
 # Execute a sql statement against a temporary view, selecting the customer and the score from the temporary view, creating a dataframe called customerRiskStreamingDF
 customerRiskStreamingDF = spark.sql("SELECT customer, score FROM CustomerRisk")
 
 # Join the streaming dataframes on the email address to get the risk score and the birth year in the same dataframe
-joinedCustomerRiskAndBirthDF = customerRiskStreamingDF\
-    .join(emailAndBirthYearStreamingDF, expr("""customer = email"""))
+joinedCustomerRiskAndBirthDF = customerRiskStreamingDF.join(
+    emailAndBirthYearStreamingDF, expr("""customer = email""")
+)
 
 # Sink the joined dataframes to a new kafka topic to send the data to the STEDI graph application
 # +--------------------+-----+--------------------+---------+
@@ -136,12 +148,10 @@ joinedCustomerRiskAndBirthDF = customerRiskStreamingDF\
 # +--------------------+-----+--------------------+---------+
 #
 # In this JSON Format {"customer":"Santosh.Fibonnaci@test.com","score":"28.5","email":"Santosh.Fibonnaci@test.com","birthYear":"1963"}
-joinedCustomerRiskAndBirthDF\
-    .selectExpr("CAST(customer AS STRING) AS key", "to_json(struct(*)) AS value")\
-    .writeStream\
-    .format("kafka")\
-    .option("kafka.bootstrap.servers", "kafka:19092")\
-    .option("topic", "stedi-graph")\
-    .option("checkpointLocation", "/tmp/checkPointKafka")\
-    .start()\
-    .awaitTermination()
+joinedCustomerRiskAndBirthDF.selectExpr(
+    "CAST(customer AS STRING) AS key", "to_json(struct(*)) AS value"
+).writeStream.format("kafka").option("kafka.bootstrap.servers", "kafka:19092").option(
+    "topic", "stedi-graph"
+).option(
+    "checkpointLocation", "/tmp/checkPointKafka"
+).start().awaitTermination()
