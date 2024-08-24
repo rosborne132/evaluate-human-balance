@@ -169,3 +169,19 @@ docker logs -f evaluate-human-balance-stedi-1
 ![Populated Graph](images/populated_graph.png)
 
 - Upload at least two screenshots of the working graph to the screenshots workspace folder
+
+## Formatting
+
+Run the following for local formatting.
+1. `python3 -m virtualenv venv` (if not already activated)
+2. `. venv/bin/activate`
+3. `pip install -r requirements.txt` (if `flake8` is not installed)
+4. `black .`
+
+## Linting
+
+Run the following to lint your project files for Pythonic best practices and common style issues.
+1. `python3 -m virtualenv venv` (if not already activated)
+2. `. venv/bin/activate`
+3. `pip install -r requirements.txt` (if `flake8` is not installed)
+4. `flake8 .`
