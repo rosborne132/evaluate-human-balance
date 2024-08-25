@@ -90,7 +90,7 @@ emailAndBirthDayStreamingDF = spark.sql(
 # Split the birth year as a separate field from the birthday
 # Select only the birth year and email fields as a new streaming data frame called emailAndBirthYearStreamingDF
 emailAndBirthYearStreamingDF = emailAndBirthDayStreamingDF.withColumn(
-    "birthYear",
+    "email",
     split(emailAndBirthDayStreamingDF.birthDay, "-").getItem(0).alias("birthYear"),
 )
 
@@ -143,10 +143,19 @@ joinedCustomerRiskAndBirthDF = customerRiskStreamingDF.join(
 # +--------------------+-----+--------------------+---------+
 #
 # In this JSON Format {"customer":"Santosh.Fibonnaci@test.com","score":"28.5","email":"Santosh.Fibonnaci@test.com","birthYear":"1963"}
-joinedCustomerRiskAndBirthDF.selectExpr(
-    "CAST(customer AS STRING) AS key", "to_json(struct(*)) AS value"
-).writeStream.format("kafka").option("kafka.bootstrap.servers", "kafka:19092").option(
-    "topic", "stedi-graph"
-).option(
-    "checkpointLocation", "/tmp/checkPointKafka"
-).start().awaitTermination()
+selectExpression = "CAST(customer AS STRING) AS key", "to_json(struct(*)) AS value"
+joinedCustomerRiskAndBirthDF.selectExpr(selectExpression).writeStream\
+    .outputMode("append")\
+    .format("kafka")\
+    .option("kafka.bootstrap.servers", "kafka:19092")\
+    .option("topic", "stedi-graph")\
+    .option("checkpointLocation", "/tmp/checkPointKafka")\
+    .start()\
+    .awaitTermination()
+
+joinedCustomerRiskAndBirthDF.selectExpr(selectExpression).writeStream\
+    .outputMode("append")\
+    .format("console")\
+    .option("truncate", "false")\
+    .start()\
+    .awaitTermination()
